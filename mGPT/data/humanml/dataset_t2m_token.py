@@ -65,6 +65,7 @@ class Text2MotionDatasetToken(data.Dataset):
         self.data_dict = data_dict
         self.name_list = new_name_list
         self.nfeats = motion.shape[-1]
+        print("leo, going in Text2MotionDatasetToken")
     
     
     def __len__(self):

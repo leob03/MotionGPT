@@ -126,6 +126,7 @@ class MotionDataset(data.Dataset):
         self.motion_dict = motion_dict
         self.name_list = new_name_list
         self.nfeats = motion_dict[new_name_list[0]]['motion'][0].shape[1]
+        print("leo, going in MotionDataset")
 
     def __len__(self):
         return len(self.name_list)

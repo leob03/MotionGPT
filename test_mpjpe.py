@@ -66,6 +66,7 @@ def main():
 
     # Dataset
     datamodule = build_data(cfg)
+    # print('leo', datamodule)
     logger.info("datasets module {} initialized".format("".join(
         cfg.DATASET.target.split('.')[-2])))
 
@@ -107,7 +108,31 @@ def main():
     for i in range(replication_times):
         metrics_type = ", ".join(cfg.METRIC.TYPE)
         logger.info(f"Evaluating {metrics_type} - Replication {i}")
-        metrics = trainer.test(model, datamodule=datamodule)[0]
+        # metrics = trainer.test(model, datamodule=datamodule)[0]
+        dicts_list, model = trainer.predict(model, datamodule=datamodule)
+        dict_list = dicts_list[0]
+        mpjpe_specific_times = model.mpjpe_specific_times
+
+
+        times_ms = [0, 0.5, 1, 1.5, 2, 2.45, 2.95, 3.45, 3.95, 4.45, 4.95, 5.45, 5.95, 6.45, 6.95, 7.45, 7.95]
+        frame_indices = [int(20 * t) for t in times_ms]
+        for time_ms, errors_at_time in zip(times_ms, mpjpe_specific_times):
+            if errors_at_time:
+                avg_error = sum(errors_at_time) / len(errors_at_time)
+                print(f'---> MPJPE at {time_ms} s = {avg_error*1000:.4f}')
+
+        # for key in dict_list:
+        #     print(key)
+        # print(dict_list['joints'].shape)  
+        # print(dict_list['feats'].shape) 
+        # print(dict_list['input_feats'].shape)
+        # print(dict_list['input_joints'].shape)
+        # print(len(dict_list))
+
+
+
+        raise SystemExit
+
         if "TM2TMetrics" in metrics_type and cfg.model.params.task == "t2m" and cfg.model.params.stage != 'vae':
             # mm meteics
             logger.info(f"Evaluating MultiModality - Replication {i}")

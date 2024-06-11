@@ -103,6 +103,7 @@ class Text2MotionDatasetM2T(data.Dataset):
         self.data_dict = data_dict
         self.name_list = new_name_list
         self.nfeats = motion.shape[-1]
+        print("leo, going in Text2MotionDatasetM2T")
     
     
     def __len__(self):

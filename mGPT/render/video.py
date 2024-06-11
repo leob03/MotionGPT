@@ -1,6 +1,8 @@
+import os
+os.environ["FFMPEG_BINARY"] = "/usr/bin/ffmpeg"
+
 import moviepy.editor as mp
 import moviepy.video.fx.all as vfx
-import os
 import imageio
 
 

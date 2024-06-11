@@ -159,6 +159,8 @@ class Text2MotionDatasetCB(data.Dataset):
             for subtask in self.instructions[task].keys():
                 self.tasks.append(self.instructions[task][subtask])
 
+        print("leo, going in class Text2MotionDatasetCB(data.Dataset)")
+
     def __len__(self):
         return len(self.name_list) * len(self.tasks)
 

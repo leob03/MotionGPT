@@ -38,6 +38,7 @@ class MotionDatasetVQ(Text2MotionDataset):
                 name_list.remove(name)
                 self.data_dict.pop(name)
         self.name_list = name_list
+        print("leo, going in MotionDatasetVQ")
 
     def __len__(self):
         return len(self.name_list)

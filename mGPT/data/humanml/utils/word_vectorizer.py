@@ -48,6 +48,7 @@ class WordVectorizer(object):
         words = pickle.load(open(pjoin(meta_root, '%s_words.pkl'%prefix), 'rb'))
         word2idx = pickle.load(open(pjoin(meta_root, '%s_idx.pkl'%prefix), 'rb'))
         self.word2vec = {w: vectors[word2idx[w]] for w in words}
+        print("leo, going in WordVectorizer")
 
     def _get_pos_ohot(self, pos):
         pos_vec = np.zeros(len(POS_enumerator))

@@ -15,15 +15,16 @@ GEN_SMPL = body_material(0.658, 0.214, 0.0114)
 
 
 class Meshes:
-    def __init__(self, data, *, gt, mode, faces_path, canonicalize, always_on_floor, oldrender=True, is_smplx=False, **kwargs):
+    def __init__(self, data, *, gt, mode, faces, canonicalize, always_on_floor, oldrender=True, is_smplx=False, **kwargs):
         data = prepare_meshes(data, canonicalize=canonicalize,
                               always_on_floor=always_on_floor,
                               is_smplx=is_smplx)
         
-        if isinstance(faces_path, str):
-            self.faces = np.load(faces_path)
-        else:
-            self.faces = faces_path
+        # if isinstance(faces_path, str):
+        #     self.faces = np.load(faces_path)
+        # else:
+        #     self.faces = faces_path
+        self.faces = faces
 
         self.data = data
         self.mode = mode

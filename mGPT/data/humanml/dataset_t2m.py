@@ -166,6 +166,7 @@ class Text2MotionDataset(data.Dataset):
         self.name_list = name_list
         self.nfeats = data_dict[name_list[0]]['motion'].shape[1]
         self.reset_max_len(self.max_length)
+        print("leo, going in Text2MotionDataset")
 
     def reset_max_len(self, length):
         assert length <= self.max_motion_length
@@ -181,6 +182,7 @@ class Text2MotionDataset(data.Dataset):
         data = self.data_dict[self.name_list[idx]]
         motion, m_length, text_list = data["motion"], data["length"], data[
             "text"]
+        # print(motion.shape)
 
         # Randomly select a caption
         text_data = random.choice(text_list)
@@ -203,7 +205,7 @@ class Text2MotionDataset(data.Dataset):
             m_length = (m_length // self.unit_length) * self.unit_length
 
         idx = random.randint(0, len(motion) - m_length)
-        motion = motion[idx:idx + m_length]
+        # motion = motion[idx:idx + m_length]
 
         # Z Normalization
         motion = (motion - self.mean) / self.std

@@ -45,7 +45,9 @@ def render_cli() -> None:
 
     if cfg.RENDER.INPUT_MODE.lower() == "npy":
         output_dir = Path(os.path.dirname(cfg.RENDER.NPY))
+        # print(output_dir)
         paths = [cfg.RENDER.NPY]
+        # print(f"begin to render for {paths[0]}")
     elif cfg.RENDER.INPUT_MODE.lower() == "dir":
         output_dir = Path(cfg.RENDER.DIR)
         paths = []
@@ -67,22 +69,25 @@ def render_cli() -> None:
 
     import numpy as np
 
+    os.environ["FFMPEG_BINARY"] = "/usr/bin/ffmpeg"
+
     from mGPT.render.blender import render
     from mGPT.render.video import Video
 
     init = True
     for path in paths:
+
         # check existed mp4 or under rendering
         if cfg.RENDER.MODE == "video":
             if os.path.exists(path.replace(".npy", ".mp4")) or os.path.exists(
                     path.replace(".npy", "_frames")):
                 print(f"npy is rendered or under rendering {path}")
-                continue
+                # continue
         else:
             # check existed png
             if os.path.exists(path.replace(".npy", ".png")):
                 print(f"npy is rendered or under rendering {path}")
-                continue
+                # continue
 
         if cfg.RENDER.MODE == "video":
             frames_folder = os.path.join(
@@ -95,7 +100,16 @@ def render_cli() -> None:
                 path.replace(".npy", ".png").split('/')[-1])
 
         try:
-            data = np.load(path)
+            dict = np.load(path, allow_pickle=True).item()
+            vertices = dict['vertices'] # torch.Size([6890, 3, 196])
+            faces = dict['faces']
+
+            vertices_np = vertices.numpy()  # Convert to NumPy array
+            vertices_np = np.transpose(vertices_np, (2, 0, 1))  # Transpose to shape (196, 6890, 3)
+            data = np.pad(vertices_np, ((0, 0), (0, 3), (0, 0)), mode='constant')  # Pad to (196, 6893, 3)
+
+
+            print(data.shape)
             if data.shape[0] == 1:
                 data = data[0]
         except FileNotFoundError:
@@ -119,7 +133,7 @@ def render_cli() -> None:
             num=cfg.RENDER.NUM,
             mode=cfg.RENDER.MODE,
             model_path=cfg.RENDER.MODEL_PATH,
-            faces_path=cfg.RENDER.FACES_PATH,
+            faces=faces,
             downsample=cfg.RENDER.DOWNSAMPLE,
             always_on_floor=cfg.RENDER.ALWAYS_ON_FLOOR,
             oldrender=cfg.RENDER.OLDRENDER,

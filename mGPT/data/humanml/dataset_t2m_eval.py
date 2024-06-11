@@ -26,6 +26,7 @@ class Text2MotionDatasetEval(Text2MotionDataset):
                          debug, **kwargs)
 
         self.w_vectorizer = w_vectorizer
+        print("leo, going in Text2MotionDatasetEval")
 
 
     def __getitem__(self, item):
@@ -33,6 +34,7 @@ class Text2MotionDatasetEval(Text2MotionDataset):
         idx = self.pointer + item
         data = self.data_dict[self.name_list[idx]]
         motion, m_length, text_list = data["motion"], data["length"], data["text"]
+        # print(motion.shape)
 
         all_captions = [
             ' '.join([token.split('/')[0] for token in text_dic['tokens']])
@@ -83,7 +85,7 @@ class Text2MotionDatasetEval(Text2MotionDataset):
             m_length = (m_length // self.unit_length) * self.unit_length
 
         idx = random.randint(0, len(motion) - m_length)
-        motion = motion[idx:idx + m_length]
+        # motion = motion[idx:idx + m_length]
         
         # Z Normalization
         motion = (motion - self.mean) / self.std

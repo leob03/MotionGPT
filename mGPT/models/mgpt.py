@@ -62,7 +62,11 @@ class MotionGPT(BaseModel):
         self.codePred = []
         self.codeFrequency = torch.zeros((self.hparams.codebook_size, ))
 
-    def forward(self, batch, task="t2m"):
+        self.times_ms = [0, 0.5, 1, 1.5, 2, 2.45, 2.95, 3.45, 3.95, 4.45, 4.95, 5.45, 5.95, 6.45, 6.95, 7.45, 7.95]  # in seconds
+        self.frame_indices = [int(20 * t) for t in self.times_ms] #[0, 10, 20, 30, 40, 49, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160]
+        self.mpjpe_specific_times = [[] for _ in self.times_ms]
+
+    def forward(self, batch, task="inbetween"):
         texts = batch["text"]
         lengths_ref = batch["length"]
 
@@ -75,11 +79,21 @@ class MotionGPT(BaseModel):
         lengths = []
         max_len = 0
 
+        # for key in batch:
+        #     print(key)
+
+        input_feats = batch["motion"]
+        # print("input_feats.shape", input_feats.shape) #[32, 40, 263]
+        input_joints = self.feats2joints(input_feats)
+        # print("input_joints.shape", input_joints.shape) #[32, 40, 22, 3]
+
         for i in range(len(texts)):
             if task == "pred":
+                # print("pred")
                 motion = self.vae.decode(
                     torch.cat((batch["motion"][i], outputs[i])))
             elif task in ["t2m", "m2t", "inbetween"]:
+                # print("t2m, m2t, inbetween")
                 motion = self.vae.decode(outputs[i])
                 # motion = self.datamodule.denormalize(motion)
                 lengths.append(motion.shape[1])
@@ -90,18 +104,22 @@ class MotionGPT(BaseModel):
                 max_len = motion.shape[1]
 
             if task in ["t2m", "m2t", "pred"]:
+                # print("t2m, m2t, pred")
                 feats_rst_lst.append(motion)
 
             elif task == "inbetween":
+                # print("inbetween")
+                heading_len = min(50, lengths_ref[i])
+                motion_heading = batch["motion"][i][:heading_len]
                 motion = torch.cat(
-                    (batch["motion_heading"][i][None],
-                     motion[:, lengths_ref[i] // 4:lengths_ref[i] // 4 * 3,
-                            ...], batch["motion_tailing"][i][None]),
+                    (motion_heading[None], 
+                    motion[:, lengths_ref[i] // 4:lengths_ref[i] // 4 * 3, ...]),
                     dim=1)
                 feats_rst_lst.append(motion)
 
-        feats_rst = torch.zeros(
-            (len(feats_rst_lst), max_len, motion.shape[-1])).to(self.device)
+        feats_rst = torch.zeros((len(feats_rst_lst), max_len, motion.shape[-1])).to(self.device)
+
+        input_joints_padded = torch.zeros(input_joints.shape[0], max_len, input_joints.shape[2], input_joints.shape[3]).to(self.device) # torch.size([bs, 196, 22, 3])
 
         # padding and concat
         for i in range(len(feats_rst_lst)):
@@ -110,12 +128,40 @@ class MotionGPT(BaseModel):
         # Recover joints for evaluation
         joints_rst = self.feats2joints(feats_rst)
 
+        valid_frame_mask = torch.zeros_like(input_joints_padded, dtype=torch.bool)
+
+        for i, length in enumerate(np.array(lengths_ref)):
+            valid_frame_mask[i, :length, :, :] = 1 # [B, 196, 22, 3]
+            input_joints_padded[i, :length, :, :] = input_joints[i, :length, :, :]
+        # Compute MPJPE
+        B, nb_frames, nb_joints, _ = input_joints_padded.shape
+        # print('input_joints_padded.shape:', input_joints_padded.shape)
+        # print('joints_rst.shape:', joints_rst.shape)
+        target_xyz_reshaped = input_joints_padded.reshape(B, -1, 3) # torch.size([bs, 196*22, 3])
+        pred_xyz_reshaped = joints_rst.reshape(B, -1, 3) # torch.size([bs, 196*22, 3])
+        per_joint_errors = torch.norm(target_xyz_reshaped - pred_xyz_reshaped, 2, 2) # torch.Size([bs, 196*22])
+
+        valid_frame_mask_reshaped = valid_frame_mask.reshape(B, -1, 3).any(dim=2) # torch.Size([bs, 196*22])
+
+        errors_reshaped = per_joint_errors.mean(dim=0) # Mean over batch #torch.Size([196*22])
+        overtime_3d_err = errors_reshaped.view(-1, nb_joints).mean(dim=1) # torch.Size([196])
+
+        # Compute MPJPE at specific time frames
+        for t_idx, frame_idx in enumerate(self.frame_indices):
+                valid_mask_at_frame = valid_frame_mask[:, frame_idx+10, :,:].any(dim=1).any(dim=0) # +10 is added because there is variability in the lengths of sequences within the same batch, so we prefer not to consider the last 10 frames to avoid this irregularity
+                if valid_mask_at_frame.any().item():  
+                    mpjpe_at_time = overtime_3d_err[frame_idx]
+                    self.mpjpe_specific_times[t_idx].append(mpjpe_at_time.item())
+                    print(f'Time {self.times_ms[t_idx]}s - MPJPE: {mpjpe_at_time*1000:.4f}')
+
         # return set
         outputs = {
             "texts": output_texts,
             "feats": feats_rst,
             "joints": joints_rst,
-            "length": lengths
+            "length": lengths,
+            "input_feats": input_feats,
+            "input_joints": input_joints,
         }
 
         return outputs
